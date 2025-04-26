@@ -226,10 +226,13 @@
             font-size: 14px;
             color: var(--secondary-color);
             transition: color 0.3s;
+            padding: 5px 10px;
+            border-radius: 4px;
         }
 
         .action-btn:hover {
             color: var(--primary-color);
+            background-color: rgba(74, 107, 255, 0.1);
         }
 
         .action-btn i {
@@ -506,6 +509,11 @@
             .section-header .btn-primary {
                 margin-top: 10px;
             }
+            
+            .goal-actions {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
         }
     </style>
 </head>
@@ -597,6 +605,34 @@
         </div>
     </div>
 
+    <!-- Modal تعديل هدف -->
+    <div id="editGoalModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>تعديل الهدف</h2>
+            <form id="editGoalForm">
+                <input type="hidden" id="editGoalId">
+                <div class="form-group">
+                    <label for="editGoalName">اسم الهدف</label>
+                    <input type="text" id="editGoalName" required placeholder="مثال: تعلم برمجة الويب">
+                </div>
+                <div class="form-group">
+                    <label for="editStartDate">تاريخ البداية</label>
+                    <input type="date" id="editStartDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEndDate">تاريخ النهاية</label>
+                    <input type="date" id="editEndDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="editGoalNote">ملاحظة أو نصيحة</label>
+                    <textarea id="editGoalNote" rows="3" placeholder="اكتب ملاحظة تحفيزية لنفسك..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">حفظ التعديلات</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal إضافة مهمة جديدة -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
@@ -625,8 +661,10 @@
             const todoContainer = document.getElementById('todoContainer');
             const addGoalBtn = document.getElementById('addGoalBtn');
             const goalModal = document.getElementById('goalModal');
+            const editGoalModal = document.getElementById('editGoalModal');
             const taskModal = document.getElementById('taskModal');
             const goalForm = document.getElementById('goalForm');
+            const editGoalForm = document.getElementById('editGoalForm');
             const taskForm = document.getElementById('taskForm');
             const goalFilter = document.getElementById('goalFilter');
             const darkModeToggle = document.getElementById('darkModeToggle');
@@ -740,6 +778,7 @@
             document.querySelectorAll('.close').forEach(btn => {
                 btn.addEventListener('click', function() {
                     goalModal.style.display = 'none';
+                    editGoalModal.style.display = 'none';
                     taskModal.style.display = 'none';
                 });
             });
@@ -747,6 +786,9 @@
             window.addEventListener('click', function(event) {
                 if (event.target === goalModal) {
                     goalModal.style.display = 'none';
+                }
+                if (event.target === editGoalModal) {
+                    editGoalModal.style.display = 'none';
                 }
                 if (event.target === taskModal) {
                     taskModal.style.display = 'none';
@@ -807,6 +849,32 @@
                 taskModal.style.display = 'none';
             });
             
+            // تعديل الهدف
+            editGoalForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const goalId = document.getElementById('editGoalId').value;
+                const goalName = document.getElementById('editGoalName').value;
+                const startDate = document.getElementById('editStartDate').value;
+                const endDate = document.getElementById('editEndDate').value;
+                const goalNote = document.getElementById('editGoalNote').value;
+                
+                const goalIndex = goals.findIndex(g => g.id === goalId);
+                if (goalIndex !== -1) {
+                    goals[goalIndex].name = goalName;
+                    goals[goalIndex].startDate = startDate;
+                    goals[goalIndex].endDate = endDate;
+                    goals[goalIndex].note = goalNote;
+                    
+                    saveGoals();
+                    renderGoals();
+                    updateGoalFilter();
+                    
+                    editGoalForm.reset();
+                    editGoalModal.style.display = 'none';
+                }
+            });
+            
             // فلترة المهام حسب الهدف
             goalFilter.addEventListener('change', function() {
                 renderTasks();
@@ -852,6 +920,12 @@
                             <button class="action-btn view-tasks-btn" data-goal-id="${goal.id}">
                                 <i class="fas fa-tasks"></i> عرض المهام
                             </button>
+                            <button class="action-btn edit-goal-btn" data-goal-id="${goal.id}">
+                                <i class="fas fa-edit"></i> تعديل
+                            </button>
+                            <button class="action-btn delete-goal-btn" data-goal-id="${goal.id}">
+                                <i class="fas fa-trash"></i> حذف
+                            </button>
                         </div>
                         ${daysLeft <= 3 ? `<div class="urgent-badge">موعد قريب!</div>` : ''}
                     `;
@@ -875,6 +949,52 @@
                         renderTasks();
                     });
                 });
+                
+                document.querySelectorAll('.edit-goal-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const goalId = this.dataset.goalId;
+                        editGoal(goalId);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-goal-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const goalId = this.dataset.goalId;
+                        deleteGoal(goalId);
+                    });
+                });
+            }
+            
+            // تعديل الهدف
+            function editGoal(goalId) {
+                const goal = goals.find(g => g.id === goalId);
+                if (!goal) return;
+                
+                document.getElementById('editGoalId').value = goal.id;
+                document.getElementById('editGoalName').value = goal.name;
+                document.getElementById('editStartDate').value = goal.startDate;
+                document.getElementById('editEndDate').value = goal.endDate;
+                document.getElementById('editGoalNote').value = goal.note || '';
+                
+                editGoalModal.style.display = 'block';
+            }
+            
+            // حذف الهدف
+            function deleteGoal(goalId) {
+                if (confirm('هل أنت متأكد من حذف هذا الهدف؟ سيتم حذف جميع المهام المرتبطة به أيضًا.')) {
+                    // حذف المهام المرتبطة بهذا الهدف أولاً
+                    tasks = tasks.filter(task => task.goalId !== goalId);
+                    saveTasks();
+                    
+                    // ثم حذف الهدف نفسه
+                    goals = goals.filter(goal => goal.id !== goalId);
+                    saveGoals();
+                    
+                    renderGoals();
+                    renderTasks();
+                    updateGoalFilter();
+                    updateStats();
+                }
             }
             
             // عرض المهام
